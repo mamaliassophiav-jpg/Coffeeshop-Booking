@@ -1,0 +1,191 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Campus Brew & Study Hub - Check Booking Status</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <div class="nav-container">
+      <a href="/" class="logo">☕ <span>Campus Brew</span> Hub</a>
+      <nav>
+        <ul>
+          <li><a href="/">Services</a></li>
+          <li><a href="booking.html">Book Slot</a></li>
+          <li><a href="status.html" class="active">Check Status</a></li>
+          <li><a href="admin/login.html">Admin</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <h1>Check Booking Status</h1>
+    <p class="subtitle">Enter your booking reference number below (e.g., BK-A1B2C3) to check your reservation status.</p>
+
+    <div class="card" style="margin-bottom: var(--spacing-lg);">
+      <form id="search-form" style="display: flex; gap: 12px; align-items: flex-end;" novalidate>
+        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+          <label for="reference-input">Reference Number</label>
+          <input type="text" id="reference-input" name="reference" placeholder="BK-XXXXXX" required style="text-transform: uppercase;">
+          <div id="err-ref" class="error-msg">Please enter a reference number.</div>
+        </div>
+        <button type="submit" id="search-btn" class="btn btn-primary">Check Status</button>
+      </form>
+    </div>
+
+    <div id="status-alert" class="alert"></div>
+
+    <div id="loading-state" class="loading-spinner" style="display: none;">Searching for booking...</div>
+
+    <div id="result-card" class="card" style="display: none;">
+      <h2>Booking Details</h2>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-top: 16px;">
+        <div>
+          <p style="font-size: 0.85rem; color: var(--text-light);">Reference Number</p>
+          <p id="res-ref" style="font-weight: 700; font-family: monospace; color: var(--primary);">-</p>
+        </div>
+        <div>
+          <p style="font-size: 0.85rem; color: var(--text-light);">Status</p>
+          <p><span id="res-status" class="badge badge-pending">Pending</span></p>
+        </div>
+        <div>
+          <p style="font-size: 0.85rem; color: var(--text-light);">Service</p>
+          <p id="res-service" style="font-weight: 600; color: var(--primary);">-</p>
+        </div>
+        <div>
+          <p style="font-size: 0.85rem; color: var(--text-light);">Date & Time</p>
+          <p id="res-datetime" style="font-weight: 600;">-</p>
+        </div>
+        <div>
+          <p style="font-size: 0.85rem; color: var(--text-light);">Guests</p>
+          <p id="res-guests" style="font-weight: 600;">-</p>
+        </div>
+        <div>
+          <p style="font-size: 0.85rem; color: var(--text-light);">Name</p>
+          <p id="res-name" style="font-weight: 600;">-</p>
+        </div>
+        <div>
+          <p style="font-size: 0.85rem; color: var(--text-light);">Contact Number</p>
+          <p id="res-contact" style="font-weight: 600;">-</p>
+        </div>
+        <div>
+          <p style="font-size: 0.85rem; color: var(--text-light);">Email Address</p>
+          <p id="res-email" style="font-weight: 600;">-</p>
+        </div>
+        <div style="grid-column: 1 / -1;">
+          <p style="font-size: 0.85rem; color: var(--text-light);">Special Notes</p>
+          <p id="res-notes" style="font-style: italic; color: var(--text-light);">None</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 School IT Department Activity - Coffee Shop Booking System. All rights reserved.</p>
+  </footer>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const searchForm = document.getElementById("search-form");
+      const refInput = document.getElementById("reference-input");
+      const searchBtn = document.getElementById("search-btn");
+      const statusAlert = document.getElementById("status-alert");
+      const loadingEl = document.getElementById("loading-state");
+      const resultCard = document.getElementById("result-card");
+      const errRef = document.getElementById("err-ref");
+
+      // Auto-load if query param exists
+      const urlParams = new URLSearchParams(window.location.search);
+      const qRef = urlParams.get("reference");
+      if (qRef) {
+        refInput.value = qRef;
+        fetchBookingStatus(qRef.trim());
+      }
+
+      searchForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        hideAlert();
+        resultCard.style.display = "none";
+        errRef.classList.remove("visible");
+
+        const reference = refInput.value.trim();
+        if (!reference) {
+          errRef.textContent = "Please enter a reference number.";
+          errRef.classList.add("visible");
+          return;
+        }
+
+        fetchBookingStatus(reference);
+      });
+
+      async function fetchBookingStatus(ref) {
+        searchBtn.disabled = true;
+        searchBtn.textContent = "Searching...";
+        loadingEl.style.display = "block";
+
+        try {
+          const res = await fetch("/api/bookings/" + encodeURIComponent(ref));
+          const booking = await res.json();
+
+          loadingEl.style.display = "none";
+          searchBtn.disabled = false;
+          searchBtn.textContent = "Check Status";
+
+          if (!res.ok) {
+            throw new Error(booking.error || "Booking not found.");
+          }
+
+          document.getElementById("res-ref").textContent = booking.reference;
+          
+          const statusBadge = document.getElementById("res-status");
+          statusBadge.textContent = booking.status;
+          statusBadge.className = "badge badge-" + booking.status;
+
+          document.getElementById("res-service").textContent = booking.service_name || "Coffee Service";
+
+          // Format Date
+          const formattedDate = new Date(booking.booking_date + "T00:00:00").toLocaleDateString("en-US", {
+            weekday: "short",
+            year: "numeric",
+            month: "short",
+            day: "numeric"
+          });
+
+          // Format Time
+          const [h, m] = booking.booking_time.split(":");
+          const hourNum = parseInt(h, 10);
+          const ampm = hourNum >= 12 ? "PM" : "AM";
+          const displayHour = hourNum % 12 === 0 ? 12 : hourNum % 12;
+          const formattedTime = `${displayHour}:${m} ${ampm}`;
+
+          document.getElementById("res-datetime").textContent = `${formattedDate} at ${formattedTime}`;
+          document.getElementById("res-guests").textContent = booking.guests + (booking.guests > 1 ? " guests" : " guest");
+          document.getElementById("res-name").textContent = booking.name;
+          document.getElementById("res-contact").textContent = booking.contact;
+          document.getElementById("res-email").textContent = booking.email;
+          document.getElementById("res-notes").textContent = booking.notes || "None";
+
+          resultCard.style.display = "block";
+        } catch (err) {
+          loadingEl.style.display = "none";
+          searchBtn.disabled = false;
+          searchBtn.textContent = "Check Status";
+          showAlert(err.message || "Failed to find booking. Please check your reference number.", "error");
+        }
+      }
+
+      function showAlert(msg, type) {
+        statusAlert.className = "alert " + type;
+        statusAlert.textContent = msg;
+        statusAlert.style.display = "block";
+      }
+
+      function hideAlert() {
+        statusAlert.style.display = "none";
+      }
+    });
+  </script>
+</body>
+</html>

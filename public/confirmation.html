@@ -1,0 +1,163 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Campus Brew & Study Hub - Booking Confirmation</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <div class="nav-container">
+      <a href="/" class="logo">☕ <span>Campus Brew</span> Hub</a>
+      <nav>
+        <ul>
+          <li><a href="/">Services</a></li>
+          <li><a href="booking.html">Book Slot</a></li>
+          <li><a href="status.html">Check Status</a></li>
+          <li><a href="admin/login.html">Admin</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div id="alert-container" class="alert"></div>
+
+    <div id="loading-state" class="loading-spinner">Loading booking confirmation details...</div>
+
+    <div id="confirmation-content" style="display: none;">
+      <div class="reference-display">
+        <p style="text-transform: uppercase; font-size: 0.85rem; font-weight: 700; color: var(--text-light);">Your Booking Reference Number</p>
+        <div id="ref-code" class="reference-code">BK-------</div>
+        <button type="button" id="copy-btn" class="btn btn-secondary" style="margin-top: 8px;">📋 Copy Reference Number</button>
+        <div id="copy-feedback" style="font-size: 0.85rem; color: var(--success); margin-top: 4px; display: none;">Copied to clipboard!</div>
+      </div>
+
+      <h2>Booking Summary</h2>
+      <div class="card">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+          <div>
+            <p style="font-size: 0.85rem; color: var(--text-light);">Service</p>
+            <p id="sum-service" style="font-weight: 600; font-size: 1.1rem; color: var(--primary);">-</p>
+          </div>
+          <div>
+            <p style="font-size: 0.85rem; color: var(--text-light);">Status</p>
+            <p><span id="sum-status" class="badge badge-pending">Pending</span></p>
+          </div>
+          <div>
+            <p style="font-size: 0.85rem; color: var(--text-light);">Date & Time</p>
+            <p id="sum-datetime" style="font-weight: 600;">-</p>
+          </div>
+          <div>
+            <p style="font-size: 0.85rem; color: var(--text-light);">Guests</p>
+            <p id="sum-guests" style="font-weight: 600;">-</p>
+          </div>
+          <div>
+            <p style="font-size: 0.85rem; color: var(--text-light);">Name</p>
+            <p id="sum-name" style="font-weight: 600;">-</p>
+          </div>
+          <div>
+            <p style="font-size: 0.85rem; color: var(--text-light);">Contact Number</p>
+            <p id="sum-contact" style="font-weight: 600;">-</p>
+          </div>
+          <div>
+            <p style="font-size: 0.85rem; color: var(--text-light);">Email Address</p>
+            <p id="sum-email" style="font-weight: 600;">-</p>
+          </div>
+          <div style="grid-column: 1 / -1;">
+            <p style="font-size: 0.85rem; color: var(--text-light);">Special Notes</p>
+            <p id="sum-notes" style="font-style: italic; color: var(--text-light);">None</p>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 12px; margin-top: var(--spacing-lg);">
+        <a href="/book.html" class="btn btn-primary">Book Another Slot</a>
+        <a href="/status.html" class="btn btn-secondary">Check Another Status</a>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 School IT Department Activity - Coffee Shop Booking System. All rights reserved.</p>
+  </footer>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const reference = urlParams.get("reference");
+      const loadingEl = document.getElementById("loading-state");
+      const contentEl = document.getElementById("confirmation-content");
+      const alertContainer = document.getElementById("alert-container");
+
+      if (!reference) {
+        loadingEl.style.display = "none";
+        alertContainer.className = "alert error";
+        alertContainer.textContent = "No reference number provided in URL.";
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/bookings/" + encodeURIComponent(reference));
+        const booking = await res.json();
+
+        loadingEl.style.display = "none";
+
+        if (!res.ok) {
+          throw new Error(booking.error || "Booking not found.");
+        }
+
+        document.getElementById("ref-code").textContent = booking.reference;
+        document.getElementById("sum-service").textContent = booking.service_name || "Coffee Service";
+        
+        const statusBadge = document.getElementById("sum-status");
+        statusBadge.textContent = booking.status;
+        statusBadge.className = "badge badge-" + booking.status;
+
+        // Format Date nicely
+        const formattedDate = new Date(booking.booking_date + "T00:00:00").toLocaleDateString("en-US", {
+          weekday: "short",
+          year: "numeric",
+          month: "short",
+          day: "numeric"
+        });
+
+        // Format Time
+        const [h, m] = booking.booking_time.split(":");
+        const hourNum = parseInt(h, 10);
+        const ampm = hourNum >= 12 ? "PM" : "AM";
+        const displayHour = hourNum % 12 === 0 ? 12 : hourNum % 12;
+        const formattedTime = `${displayHour}:${m} ${ampm}`;
+
+        document.getElementById("sum-datetime").textContent = `${formattedDate} at ${formattedTime}`;
+        document.getElementById("sum-guests").textContent = booking.guests + (booking.guests > 1 ? " guests" : " guest");
+        document.getElementById("sum-name").textContent = booking.name;
+        document.getElementById("sum-contact").textContent = booking.contact;
+        document.getElementById("sum-email").textContent = booking.email;
+        document.getElementById("sum-notes").textContent = booking.notes || "None";
+
+        contentEl.style.display = "block";
+
+        // Copy button
+        const copyBtn = document.getElementById("copy-btn");
+        const copyFeedback = document.getElementById("copy-feedback");
+        copyBtn.addEventListener("click", () => {
+          navigator.clipboard.writeText(booking.reference).then(() => {
+            copyFeedback.style.display = "block";
+            setTimeout(() => {
+              copyFeedback.style.display = "none";
+            }, 3000);
+          }).catch(err => {
+            console.error("Failed to copy", err);
+          });
+        });
+
+      } catch (err) {
+        loadingEl.style.display = "none";
+        alertContainer.className = "alert error";
+        alertContainer.textContent = err.message || "Failed to retrieve booking confirmation.";
+      }
+    });
+  </script>
+</body>
+</html>

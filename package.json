@@ -1,0 +1,19 @@
+{
+     "name": "coffee-shop-booking-system",
+     "version": "1.0.0",
+     "description": "Coffee shop booking system for school IT department activity",
+     "main": "api/index.js",
+     "scripts": {
+          "start": "node api/index.js",
+          "create-admin": "node scripts/create-admin.js"
+     },
+     "dependencies": {
+          "@supabase/supabase-js": "^2.117.2",
+          "bcryptjs": "^2.4.3",
+          "cookie-parser": "^1.4.7",
+          "crypto": "^1.0.1",
+          "dotenv": "^16.6.1",
+          "express": "^4.22.3",
+          "jsonwebtoken": "^9.0.3"
+     }
+}

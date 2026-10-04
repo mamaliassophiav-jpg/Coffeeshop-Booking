@@ -1,0 +1,97 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Campus Brew & Study Hub - Available Services</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <div class="nav-container">
+      <a href="/" class="logo">☕ <span>Campus Brew</span> Hub</a>
+      <nav>
+        <ul>
+          <li><a href="/" class="active">Services</a></li>
+          <li><a href="booking.html">Book Slot</a></li>
+          <li><a href="status.html">Check Status</a></li>
+          <li><a href="admin/login.html">Admin</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <h1>Coffee Lounge & Study Services</h1>
+    <p class="subtitle">Explore our available coffee tasting flights, study booths, and workshops. Select a service to book your slot.</p>
+
+    <div id="alert-container"></div>
+
+    <div id="services-loading" class="loading-spinner">Loading available services...</div>
+    <div id="services-grid" class="grid-services" style="display: none;"></div>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 School IT Department Activity - Coffee Shop Booking System. All rights reserved.</p>
+  </footer>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      const loadingEl = document.getElementById("services-loading");
+      const gridEl = document.getElementById("services-grid");
+      const alertContainer = document.getElementById("alert-container");
+
+      function formatPeso(amount) {
+        return "₱" + Number(amount).toLocaleString("en-PH", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        });
+      }
+
+      try {
+        const response = await fetch("services.json");
+        const data = await response.json();
+
+        loadingEl.style.display = "none";
+
+        if (!response.ok) {
+          throw new Error(data.error || "Failed to load services");
+        }
+
+        if (!Array.isArray(data) || data.length === 0) {
+          gridEl.innerHTML = '<div class="empty-state">No services available at the moment. Please check back later.</div>';
+          gridEl.style.display = "grid";
+          return;
+        }
+
+        gridEl.innerHTML = data.map(service => `
+          <div class="service-card">
+            <div>
+              <div class="service-title">${escapeHtml(service.name)}</div>
+              <div class="service-desc">${escapeHtml(service.description || "No description provided.")}</div>
+            </div>
+            <div class="service-footer">
+              <span class="service-price">${formatPeso(service.price)}</span>
+              <a href="/book.html?service_id=${service.id}" class="btn btn-primary">Book Now</a>
+            </div>
+          </div>
+        `).join("");
+
+        gridEl.style.display = "grid";
+      } catch (err) {
+        loadingEl.style.display = "none";
+        alertContainer.className = "alert error";
+        alertContainer.textContent = err.message || "Failed to connect to server.";
+      }
+    });
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+  </script>
+</body>
+</html>

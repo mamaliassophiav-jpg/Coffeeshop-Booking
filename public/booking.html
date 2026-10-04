@@ -1,0 +1,301 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Campus Brew & Study Hub - Book a Slot</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <div class="nav-container">
+      <a href="/" class="logo">☕ <span>Campus Brew</span> Hub</a>
+      <nav>
+        <ul>
+          <li><a href="/">Services</a></li>
+          <li><a href="booking.html" class="active">Book Slot</a></li>
+          <li><a href="status.html">Check Status</a></li>
+          <li><a href="admin/login.html">Admin</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <h1>Book a Slot or Experience</h1>
+    <p class="subtitle">Fill out the form below to reserve your spot at our coffee lounge and study area.</p>
+
+    <div id="form-alert" class="alert"></div>
+
+    <div class="card">
+      <form id="booking-form" novalidate>
+        <div class="form-group">
+          <label for="service_id">Select Service *</label>
+          <select id="service_id" name="service_id" required>
+            <option value="">-- Choose a service --</option>
+          </select>
+          <div id="err-service_id" class="error-msg">Please select a valid service.</div>
+        </div>
+
+        <div class="form-group">
+          <label for="booking_date">Booking Date *</label>
+          <input type="date" id="booking_date" name="booking_date" required>
+          <div id="err-booking_date" class="error-msg">Please select a valid date (today or future).</div>
+        </div>
+
+        <div class="form-group">
+          <label>Booking Time Slot (7:00 AM - 5:00 PM) *</label>
+          <div id="time-slots-grid" class="time-slots-container">
+            <!-- Generated dynamically via JS -->
+          </div>
+          <input type="hidden" id="booking_time" name="booking_time" required>
+          <div id="err-booking_time" class="error-msg">Please select a time slot.</div>
+        </div>
+
+        <div class="form-group">
+          <label for="guests">Number of Guests *</label>
+          <input type="number" id="guests" name="guests" value="1" min="1" max="20" required>
+          <div id="err-guests" class="error-msg">Number of guests must be at least 1.</div>
+        </div>
+
+        <div class="form-group">
+          <label for="name">Your Full Name *</label>
+          <input type="text" id="name" name="name" placeholder="Juan dela Cruz" required>
+          <div id="err-name" class="error-msg">Please enter your full name.</div>
+        </div>
+
+        <div class="form-group">
+          <label for="contact">Contact Number *</label>
+          <input type="text" id="contact" name="contact" placeholder="09123456789" required>
+          <div id="err-contact" class="error-msg">Please enter your contact number.</div>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email Address *</label>
+          <input type="email" id="email" name="email" placeholder="student@school.edu.ph" required>
+          <div id="err-email" class="error-msg">Please enter a valid email address.</div>
+        </div>
+
+        <div class="form-group">
+          <label for="notes">Special Notes or Requests (Optional)</label>
+          <textarea id="notes" name="notes" placeholder="Dietary restrictions, seating preferences, etc."></textarea>
+        </div>
+
+        <button type="submit" id="submit-btn" class="btn btn-primary" style="width: 100%;">Submit Booking</button>
+      </form>
+    </div>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 School IT Department Activity - Coffee Shop Booking System. All rights reserved.</p>
+  </footer>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      const serviceSelect = document.getElementById("service_id");
+      const dateInput = document.getElementById("booking_date");
+      const timeContainer = document.getElementById("time-slots-grid");
+      const timeInput = document.getElementById("booking_time");
+      const form = document.getElementById("booking-form");
+      const submitBtn = document.getElementById("submit-btn");
+      const formAlert = document.getElementById("form-alert");
+
+      // Set min date to today in Asia/Manila / local date format
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, "0");
+      const day = String(today.getDate()).padStart(2, "0");
+      const todayStr = `${year}-${month}-${day}`;
+      dateInput.min = todayStr;
+      dateInput.value = todayStr;
+
+      // Generate time slots from 07:00 to 17:00 in 30-min increments
+      const slots = [];
+      for (let hour = 7; hour <= 17; hour++) {
+        for (let min = 0; min < 60; min += 30) {
+          if (hour === 17 && min > 0) break; // Stop at 17:00
+          const hStr = String(hour).padStart(2, "0");
+          const mStr = String(min).padStart(2, "0");
+          const time24 = `${hStr}:${mStr}`;
+          
+          // 12-hour format display
+          const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+          const ampm = hour >= 12 ? "PM" : "AM";
+          const displayTime = `${displayHour}:${mStr} ${ampm}`;
+
+          slots.push({ time24, displayTime });
+        }
+      }
+
+      timeContainer.innerHTML = slots.map(slot => `
+        <button type="button" class="time-slot-btn" data-time="${slot.time24}">${slot.displayTime}</button>
+      `).join("");
+
+      // Time slot click handling
+      timeContainer.addEventListener("click", (e) => {
+        const btn = e.target.closest(".time-slot-btn");
+        if (!btn) return;
+        
+        document.querySelectorAll(".time-slot-btn").forEach(b => b.classList.remove("selected"));
+        btn.classList.add("selected");
+        timeInput.value = btn.getAttribute("data-time");
+        clearError("booking_time");
+      });
+
+      // Load services & preselect if query param exists
+      try {
+        const res = await fetch("/api/services");
+        const services = await res.json();
+        if (res.ok && Array.isArray(services)) {
+          serviceSelect.innerHTML += services.map(s => `
+            <option value="${s.id}">${escapeHtml(s.name)} (₱${Number(s.price).toLocaleString("en-PH", { minimumFractionDigits: 2 })})</option>
+          `).join("");
+
+          const urlParams = new URLSearchParams(window.location.search);
+          const preselectedService = urlParams.get("service_id");
+          if (preselectedService) {
+            serviceSelect.value = preselectedService;
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load services", err);
+      }
+
+      // Form submission validation & handling
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        hideAlert();
+        clearAllErrors();
+
+        let isValid = true;
+
+        const serviceId = serviceSelect.value;
+        const bookingDate = dateInput.value;
+        const bookingTime = timeInput.value;
+        const guests = document.getElementById("guests").value;
+        const name = document.getElementById("name").value.trim();
+        const contact = document.getElementById("contact").value.trim();
+        const email = document.getElementById("email").value.trim();
+        const notes = document.getElementById("notes").value.trim();
+
+        if (!serviceId) {
+          showError("service_id", "Please choose a service.");
+          isValid = false;
+        }
+
+        if (!bookingDate) {
+          showError("booking_date", "Please select a booking date.");
+          isValid = false;
+        } else if (bookingDate < todayStr) {
+          showError("booking_date", "Booking date cannot be in the past.");
+          isValid = false;
+        }
+
+        if (!bookingTime) {
+          showError("booking_time", "Please select a time slot.");
+          isValid = false;
+        }
+
+        const parsedGuests = parseInt(guests, 10);
+        if (isNaN(parsedGuests) || parsedGuests < 1) {
+          showError("guests", "Guests must be at least 1.");
+          isValid = false;
+        }
+
+        if (!name) {
+          showError("name", "Please enter your full name.");
+          isValid = false;
+        }
+
+        if (!contact) {
+          showError("contact", "Please enter your contact number.");
+          isValid = false;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!email || !emailRegex.test(email)) {
+          showError("email", "Please enter a valid email address.");
+          isValid = false;
+        }
+
+        if (!isValid) {
+          return;
+        }
+
+        // Submit via API
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Submitting Booking...";
+
+        try {
+          const response = await fetch("/api/bookings", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              service_id: serviceId,
+              name,
+              contact,
+              email,
+              booking_date: bookingDate,
+              booking_time: bookingTime,
+              guests: parsedGuests,
+              notes: notes || null
+            })
+          });
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            throw new Error(result.error || "Failed to submit booking.");
+          }
+
+          // Redirect to confirmation page
+          window.location.href = `/confirmation.html?reference=${encodeURIComponent(result.reference)}`;
+        } catch (err) {
+          showAlert(err.message || "An unexpected error occurred. Please try again.", "error");
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Submit Booking";
+        }
+      });
+
+      function showError(fieldId, msg) {
+        const errEl = document.getElementById("err-" + fieldId);
+        if (errEl) {
+          errEl.textContent = msg;
+          errEl.classList.add("visible");
+        }
+      }
+
+      function clearError(fieldId) {
+        const errEl = document.getElementById("err-" + fieldId);
+        if (errEl) {
+          errEl.classList.remove("visible");
+        }
+      }
+
+      function clearAllErrors() {
+        document.querySelectorAll(".error-msg").forEach(el => el.classList.remove("visible"));
+      }
+
+      function showAlert(msg, type) {
+        formAlert.className = "alert " + type;
+        formAlert.textContent = msg;
+        formAlert.style.display = "block";
+      }
+
+      function hideAlert() {
+        formAlert.style.display = "none";
+      }
+    });
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+  </script>
+</body>
+</html>

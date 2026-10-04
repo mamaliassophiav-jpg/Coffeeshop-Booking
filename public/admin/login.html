@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Campus Brew & Study Hub - Admin Login</title>
+
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+
+<body>
+
+  <header>
+    <div class="nav-container">
+
+      <a href="/" class="logo">
+        ☕ <span>Campus Brew</span> Hub
+      </a>
+
+      <nav>
+        <ul>
+          <li>
+            <a href="/">Services</a>
+          </li>
+
+          <li>
+            <a href="/booking.html">Book Slot</a>
+          </li>
+
+          <li>
+            <a href="/status.html">Check Status</a>
+          </li>
+
+          <li>
+            <a href="/admin/login.html" class="active">Admin</a>
+          </li>
+        </ul>
+      </nav>
+
+    </div>
+  </header>
+
+
+  <main style="max-width: 480px; margin-top: 40px;">
+
+    <h1>Admin Login</h1>
+
+    <p class="subtitle">
+      Sign in to manage bookings and reservation statuses.
+    </p>
+
+
+    <div id="login-alert" class="alert"></div>
+
+
+    <div class="card">
+
+      <form id="login-form" novalidate>
+
+        <!-- USERNAME -->
+        <div class="form-group">
+
+          <label for="username">
+            Username *
+          </label>
+
+          <input
+            type="text"
+            id="username"
+            name="username"
+            placeholder="admin"
+            required
+            autocomplete="username"
+          >
+
+          <div id="err-username" class="error-msg">
+            Please enter your username.
+          </div>
+
+        </div>
+
+
+        <!-- PASSWORD -->
+        <div class="form-group">
+
+          <label for="password">
+            Password *
+          </label>
+
+          <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="••••••••"
+            required
+            autocomplete="current-password"
+          >
+
+          <div id="err-password" class="error-msg">
+            Please enter your password.
+          </div>
+
+        </div>
+
+
+        <!-- LOGIN BUTTON -->
+        <button
+          type="submit"
+          id="login-btn"
+          class="btn btn-primary"
+          style="width: 100%;"
+        >
+          Sign In
+        </button>
+
+      </form>
+
+    </div>
+
+  </main>
+
+
+  <footer>
+    <p>
+      &copy; 2026 School IT Department Activity -
+      Coffee Shop Booking System.
+      All rights reserved.
+    </p>
+  </footer>
+
+
+  <script>
+
+    document.addEventListener("DOMContentLoaded", () => {
+
+      const form = document.getElementById("login-form");
+
+      const usernameInput =
+        document.getElementById("username");
+
+      const passwordInput =
+        document.getElementById("password");
+
+      const loginBtn =
+        document.getElementById("login-btn");
+
+      const loginAlert =
+        document.getElementById("login-alert");
+
+      const errUsername =
+        document.getElementById("err-username");
+
+      const errPassword =
+        document.getElementById("err-password");
+
+
+      // ==========================================
+      // LOGIN FORM
+      // ==========================================
+
+      form.addEventListener("submit", async (event) => {
+
+        event.preventDefault();
+
+        hideAlert();
+
+        errUsername.classList.remove("visible");
+        errPassword.classList.remove("visible");
+
+
+        // ========================================
+        // VALIDATE INPUT
+        // ========================================
+
+        const username =
+          usernameInput.value.trim();
+
+        const password =
+          passwordInput.value;
+
+        let isValid = true;
+
+
+        if (!username) {
+
+          errUsername.classList.add("visible");
+
+          isValid = false;
+        }
+
+
+        if (!password) {
+
+          errPassword.classList.add("visible");
+
+          isValid = false;
+        }
+
+
+        if (!isValid) {
+          return;
+        }
+
+
+        // ========================================
+        // DISABLE BUTTON
+        // ========================================
+
+        loginBtn.disabled = true;
+        loginBtn.textContent = "Signing in...";
+
+
+        try {
+
+          // ======================================
+          // SEND LOGIN REQUEST
+          // ======================================
+
+          const response = await fetch(
+            "/api/admin/login",
+            {
+              method: "POST",
+
+              headers: {
+                "Content-Type": "application/json"
+              },
+
+              credentials: "same-origin",
+
+              body: JSON.stringify({
+                username: username,
+                password: password
+              })
+            }
+          );
+
+
+          // ======================================
+          // READ SERVER RESPONSE
+          // ======================================
+
+          let data;
+
+          try {
+
+            data = await response.json();
+
+          } catch (jsonError) {
+
+            throw new Error(
+              "The server returned an invalid response."
+            );
+          }
+
+
+          // ======================================
+          // LOGIN FAILED
+          // ======================================
+
+          if (!response.ok) {
+
+            throw new Error(
+              data.error ||
+              "Invalid username or password."
+            );
+          }
+
+
+          // ======================================
+          // LOGIN SUCCESSFUL
+          // ======================================
+
+          if (data.success) {
+
+            window.location.href =
+              "/admin/dashboard.html";
+
+            return;
+          }
+
+
+          throw new Error(
+            "Login failed. Please try again."
+          );
+
+
+        } catch (error) {
+
+          console.error(
+            "Admin login error:",
+            error
+          );
+
+          showAlert(
+            error.message ||
+            "Unable to sign in. Please try again.",
+            "error"
+          );
+
+          loginBtn.disabled = false;
+          loginBtn.textContent = "Sign In";
+        }
+
+      });
+
+
+      // ==========================================
+      // SHOW ALERT
+      // ==========================================
+
+      function showAlert(message, type) {
+
+        loginAlert.className =
+          "alert " + type;
+
+        loginAlert.textContent =
+          message;
+
+        loginAlert.style.display =
+          "block";
+      }
+
+
+      // ==========================================
+      // HIDE ALERT
+      // ==========================================
+
+      function hideAlert() {
+
+        loginAlert.style.display =
+          "none";
+      }
+
+    });
+
+  </script>
+
+</body>
+</html>
